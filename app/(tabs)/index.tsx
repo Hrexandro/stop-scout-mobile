@@ -6,7 +6,7 @@ import { FavoritesCounter } from "../../components/FavoritesCounter";
 export default function HomeScreen() {
   const [departures] = useState([
     {
-      id: "1",
+      id: "0",
       routeId: 10177,
       headsign: "Test 10177->177",
       theoreticalTime: "19:09",
