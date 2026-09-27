@@ -7,6 +7,13 @@ export default function HomeScreen() {
   const [departures] = useState([
     {
       id: "1",
+      routeId: 10177,
+      headsign: "Test 10177->177",
+      theoreticalTime: "19:09",
+      delayInSeconds: 1000,
+    },
+    {
+      id: "1",
       routeId: 9,
       headsign: "Strzyża PKM",
       theoreticalTime: "19:09",

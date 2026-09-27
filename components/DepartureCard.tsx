@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { routeFormatter } from "../src/domain/utils/routeFormatter";
 import DelayHighlight from "./DelayHighlight";
 
 interface DepartureCardProps {
@@ -14,12 +15,10 @@ export default function DepartureCard({
   theoreticalTime,
   delayInSeconds,
 }: DepartureCardProps) {
-  const isDelayed = delayInSeconds && delayInSeconds > 0;
-
   return (
     <View style={styles.cardContainer}>
       <View style={styles.routeBadge}>
-        <Text style={styles.routeText}>{routeId}</Text>
+        <Text style={styles.routeText}>{routeFormatter(routeId)}</Text>
       </View>
 
       <View style={styles.infoContainer}>
