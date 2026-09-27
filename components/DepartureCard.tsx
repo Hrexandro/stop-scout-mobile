@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import DelayHighlight from "./DelayHighlight";
 
 interface DepartureCardProps {
   routeId: number | string;
@@ -23,12 +24,8 @@ export default function DepartureCard({
 
       <View style={styles.infoContainer}>
         <Text style={styles.headsign}>{headsign}</Text>
-        <Text style={styles.timeText}>
-          Planowo: {theoreticalTime}
-          {isDelayed && (
-            <Text style={styles.delayText}> (+{delayInSeconds}s)</Text>
-          )}
-        </Text>
+        <Text style={styles.timeText}>Planowo: {theoreticalTime}</Text>
+        <DelayHighlight delayInSeconds={delayInSeconds} />
       </View>
     </View>
   );
