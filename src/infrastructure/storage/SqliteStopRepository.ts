@@ -106,3 +106,40 @@ export async function searchStops(query: string): Promise<Stop[]> {
     lon: row.lon,
   }));
 }
+export interface MapBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+export async function getStopsInBounds(bounds: MapBounds): Promise<Stop[]> {
+  const { south, west, north, east } = bounds;
+
+  if (
+    ![south, west, north, east].every(Number.isFinite) ||
+    south > north ||
+    west > east
+  ) {
+    throw new Error("Nieprawidłowe granice mapy.");
+  }
+
+  const db = await getDatabase();
+
+  const rows = await db.getAllAsync<StopRow>(
+    `SELECT stop_id, name, sub_name, lat, lon
+     FROM stops
+     WHERE lat BETWEEN ? AND ?
+       AND lon BETWEEN ? AND ?
+     ORDER BY name`,
+    [south, north, west, east],
+  );
+
+  return rows.map((row) => ({
+    stopId: row.stop_id,
+    name: row.name,
+    subName: row.sub_name ?? undefined,
+    lat: row.lat,
+    lon: row.lon,
+  }));
+}

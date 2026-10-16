@@ -9,11 +9,16 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { ExpoLocationService } from "../../src/infrastructure/location/ExpoLocationService";
-
+import {
+  getStopById,
+  getStopsInBounds,
+} from "../../src/infrastructure/storage/SqliteStopRepository";
+import { useStore } from "../../src/store/useStore";
 const locationService = new ExpoLocationService();
 
 export default function MapTabScreen() {
   const webViewRef = useRef<WebView>(null);
+  const boundsRequestRef = useRef(0);
   const [loadingLoc, setLoadingLoc] = useState(false);
 
   const handleCenterOnUser = async () => {
@@ -58,7 +63,79 @@ export default function MapTabScreen() {
       setLoadingLoc(false);
     }
   };
+  const handleMapMessage = async (rawMessage: string) => {
+    try {
+      const message = JSON.parse(rawMessage);
+      if (message.type === "addFavorite") {
+        const stopId = message.stopId;
 
+        if (!Number.isInteger(stopId) || stopId <= 0) {
+          return;
+        }
+
+        const { userId, favoriteStops, addStop } = useStore.getState();
+
+        if (userId === null) {
+          Alert.alert(
+            "Wymagane logowanie",
+            "Zaloguj się, aby dodawać przystanki do ulubionych.",
+          );
+          return;
+        }
+
+        if (favoriteStops.some((stop) => stop.stopId === stopId)) {
+          Alert.alert("Informacja", "Ten przystanek jest już w ulubionych.");
+          return;
+        }
+
+        const stop = await getStopById(stopId);
+
+        if (!stop) {
+          Alert.alert("Błąd", "Nie znaleziono przystanku w bazie.");
+          return;
+        }
+
+        await addStop(stop);
+
+        Alert.alert(
+          "Dodano do ulubionych",
+          `Przystanek ${stop.name} został zapisany.`,
+        );
+
+        return;
+      }
+      if (message.type !== "bounds") return;
+
+      const requestNumber = ++boundsRequestRef.current;
+
+      // Przy małym przybliżeniu nie pokazujemy pinezek.
+      if (message.zoom < 15) {
+        webViewRef.current?.injectJavaScript("window.renderStops([]); true;");
+        return;
+      }
+
+      // Pobieramy z SQLite tylko widoczne przystanki.
+      const stops = await getStopsInBounds({
+        south: message.south,
+        west: message.west,
+        north: message.north,
+        east: message.east,
+      });
+
+      // Ignorujemy wynik, jeśli użytkownik zdążył
+      // już przesunąć mapę w inne miejsce.
+      if (requestNumber !== boundsRequestRef.current) return;
+
+      // Przekazujemy przystanki do Leafleta.
+      webViewRef.current?.injectJavaScript(
+        `window.renderStops(${JSON.stringify(stops)}); true;`,
+      );
+
+      console.log(`Mapa: znaleziono ${stops.length} przystanków.`);
+    } catch (error) {
+      console.error("Błąd obsługi mapy:", error);
+    }
+  };
   const mapHtml = `
     <!DOCTYPE html>
     <html>
@@ -79,8 +156,73 @@ export default function MapTabScreen() {
             attribution: '© OpenStreetMap'
           }).addTo(map);
 
-          var marker = L.marker([54.352, 18.646]).addTo(map);
-          marker.bindPopup("<b>Dworzec Główny</b><br>Węzeł przesiadkowy").openPopup();
+          // Warstwa z przystankami komunikacji miejskiej.
+          var stopMarkers = L.layerGroup().addTo(map);
+
+          // React Native wywoła tę funkcję po odczycie SQLite.
+          window.renderStops = function(stops) {
+            stopMarkers.clearLayers();
+
+            stops.forEach(function(stop) {
+              var marker = L.marker([stop.lat, stop.lon]);
+
+              var popup = document.createElement('div');
+
+              var title = document.createElement('strong');
+              title.textContent = stop.name;
+
+              var details = document.createElement('div');
+              details.textContent =
+                'Słupek: ' + (stop.subName || '—') +
+                ' | ID: ' + stop.stopId;
+
+              popup.appendChild(title);
+              popup.appendChild(details);
+              var favoriteButton = document.createElement('button');
+
+              favoriteButton.textContent = '☆ Dodaj do ulubionych';
+
+              favoriteButton.style.cssText =
+                'display:block; margin-top:10px; padding:8px; ' +
+                'background:#2563EB; color:white; border:0; ' +
+                'border-radius:5px; font-weight:bold;';
+
+              favoriteButton.onclick = function() {
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({
+                    type: 'addFavorite',
+                    stopId: stop.stopId
+                  })
+                );
+              };
+
+              popup.appendChild(favoriteButton);
+              marker.bindPopup(popup);
+              marker.addTo(stopMarkers);
+            });
+          };
+
+          // Przekazanie granic aktualnego widoku do React Native.
+          function sendMapBounds() {
+            var bounds = map.getBounds();
+
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({
+                type: 'bounds',
+                south: bounds.getSouth(),
+                west: bounds.getWest(),
+                north: bounds.getNorth(),
+                east: bounds.getEast(),
+                zoom: map.getZoom()
+              })
+            );
+          }
+
+          // Aktualizacja po przesunięciu lub zmianie przybliżenia.
+          map.on('moveend', sendMapBounds);
+
+          // Pierwsze sprawdzenie po załadowaniu mapy.
+          map.whenReady(sendMapBounds);
         </script>
       </body>
     </html>
@@ -93,6 +235,9 @@ export default function MapTabScreen() {
         originWhitelist={["*"]}
         source={{ html: mapHtml }}
         style={styles.map}
+        onMessage={(event) => {
+          void handleMapMessage(event.nativeEvent.data);
+        }}
       />
 
       {/* Pływający przycisk lokalizacji użytkownika (FAB) */}
