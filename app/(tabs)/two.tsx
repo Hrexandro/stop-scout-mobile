@@ -150,7 +150,7 @@ export default function MapTabScreen() {
       <body>
         <div id="map"></div>
         <script>
-          var map = L.map('map').setView([54.352, 18.646], 14);
+          var map = L.map('map').setView([54.352, 18.646], 15);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'

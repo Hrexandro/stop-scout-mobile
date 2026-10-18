@@ -9,17 +9,10 @@ import {
   View,
 } from "react-native";
 import DepartureCard from "../../components/DepartureCard";
-import { FavoritesCounter } from "../../components/FavoritesCounter";
-import { fetchStopsFromApi } from "../../src/infrastructure/api/ZtmApiClient";
-import {
-  saveStops,
-  countStoredStops,
-} from "../../src/infrastructure/storage/SqliteStopRepository";
-import {
-  fetchDeparturesFromApi,
-  type ZtmDeparture,
-} from "../../src/infrastructure/api/ZtmDeparturesClient";
-import { filterRecentDepartures } from "../../src/domain/utils/departureTime";
+import { syncStops } from "../../src/use-cases/SyncStopsUseCase";
+import type { Departure } from "../../src/domain/entities/Departure";
+import { GetLiveDeparturesUseCase } from "../../src/use-cases/GetLiveDeparturesUseCase";
+import { ZtmDeparturesRepository } from "../../src/infrastructure/api/ZtmDeparturesRepository";
 import { useStore } from "../../src/store/useStore";
 
 function formatDepartureTime(isoTime: string): string {
@@ -36,29 +29,46 @@ function formatDepartureTime(isoTime: string): string {
   }).format(date);
 }
 
+const departuresUseCase = new GetLiveDeparturesUseCase(
+  new ZtmDeparturesRepository(),
+);
+
 export default function HomeScreen() {
-  const [departures, setDepartures] = useState<ZtmDeparture[]>([]);
+  const [departures, setDepartures] = useState<Departure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTools, setShowTools] = useState(false);
   const user = useStore((state) => state.user);
   const logout = useStore((state) => state.logout);
   const activeStop = useStore((state) => state.activeStop);
+  const [stopsStatus, setStopsStatus] = useState<
+    "checking" | "ready" | "error"
+  >("checking");
+
   const loadDepartures = useCallback(async () => {
     try {
-      const data = await fetchDeparturesFromApi(activeStop.stopId);
-      const filtered = filterRecentDepartures(data);
+      const data = await departuresUseCase.execute(activeStop.stopId);
 
-      setDepartures(filtered);
+      setDepartures(data);
       setError(null);
 
-      console.log(
-        `Odjazdy ZTM: ${data.length}, po filtrowaniu: ${filtered.length}`,
-      );
+      console.log(`Odjazdy ZTM po filtrowaniu: ${data.length}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Nieznany błąd";
+      const message = err instanceof Error ? err.message : String(err);
 
-      setError(message);
+      const isNetworkError =
+        /fetch failed|network request failed|unknownhostexception|unable to resolve host/i.test(
+          message,
+        );
+
+      setDepartures([]);
+
+      setError(
+        isNetworkError
+          ? "Brak połączenia z internetem. Aktualne odjazdy są niedostępne."
+          : "Nie udało się pobrać odjazdów. Spróbuj ponownie później.",
+      );
+
       console.error("Błąd pobierania odjazdów:", message);
     } finally {
       setLoading(false);
@@ -81,31 +91,68 @@ export default function HomeScreen() {
 
   const handleTestApi = async () => {
     try {
-      const stops = await fetchStopsFromApi();
+      const result = await syncStops(true);
 
-      if (stops.length === 0) {
-        throw new Error("API nie zwróciło żadnych przystanków.");
-      }
-
-      await saveStops(stops);
-
-      const storedCount = await countStoredStops();
+      setStopsStatus("ready");
 
       Alert.alert(
         "Synchronizacja zakończona",
-        `Pobrano z API: ${stops.length}\n` +
-          `Przystanki w SQLite: ${storedCount}`,
+        `Przystanki w SQLite: ${result.count}`,
       );
     } catch (error) {
+      setStopsStatus("error");
+
       Alert.alert(
         "Błąd synchronizacji",
         error instanceof Error ? error.message : "Nieznany błąd",
       );
     }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    void syncStops()
+      .then((result) => {
+        if (!active) return;
+
+        setStopsStatus("ready");
+
+        console.log(
+          `SQLite: ${result.count} przystanków. ` +
+            (result.downloaded
+              ? "Pobrano z API."
+              : "Wczytano istniejącą bazę."),
+        );
+      })
+      .catch((error) => {
+        if (!active) return;
+
+        setStopsStatus("error");
+        console.error("Błąd inicjalizacji przystanków:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Najbliższe odjazdy — {activeStop.name}</Text>
+      {stopsStatus === "checking" && (
+        <Text style={{ color: "#6B7280", marginBottom: 8 }}>
+          Przygotowywanie bazy przystanków...
+        </Text>
+      )}
+
+      {stopsStatus === "error" && (
+        <Pressable onPress={() => void handleTestApi()}>
+          <Text style={{ color: "#DC2626", marginBottom: 8 }}>
+            Nie udało się pobrać przystanków. Dotknij, aby ponowić.
+          </Text>
+        </Pressable>
+      )}
       <Link href="/favorites" asChild>
         <Pressable style={styles.menuButton}>
           <Text style={styles.menuButtonText}>Wybierz przystanek</Text>
@@ -170,18 +217,20 @@ export default function HomeScreen() {
           <DepartureCard
             routeId={item.routeShortName || item.routeId}
             headsign={item.headsign}
-            theoreticalTime={formatDepartureTime(item.theoreticalTime)}
+            theoreticalTime={formatDepartureTime(
+              item.theoreticalTime ?? item.estimatedTime ?? "",
+            )}
             delayInSeconds={item.delayInSeconds}
           />
         )}
         ListEmptyComponent={
-          <Text>
-            {loading
-              ? "Pobieranie odjazdów..."
-              : error
-                ? "Nie udało się pobrać odjazdów."
+          error ? null : (
+            <Text>
+              {loading
+                ? "Pobieranie odjazdów..."
                 : "Brak najbliższych odjazdów."}
-          </Text>
+            </Text>
+          )
         }
         contentContainerStyle={{ paddingBottom: 20 }}
       />
