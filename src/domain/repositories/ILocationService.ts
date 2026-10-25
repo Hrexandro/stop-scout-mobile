@@ -1,4 +1,4 @@
-import { Coordinates } from "../entities/Coordinates";
+import { Coordinates } from "../value-objects/Coordinates";
 
 export interface ILocationService {
   requestPermissions(): Promise<boolean>;

@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { Coordinates } from "../../domain/entities/Coordinates";
+import { Coordinates } from "../../domain/value-objects/Coordinates";
 import { ILocationService } from "../../domain/repositories/ILocationService";
 
 export class ExpoLocationService implements ILocationService {
@@ -20,10 +20,10 @@ export class ExpoLocationService implements ILocationService {
       accuracy: Location.Accuracy.Balanced,
     });
 
-    return {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      accuracy: location.coords.accuracy,
-    };
+    return new Coordinates(
+      location.coords.latitude,
+      location.coords.longitude,
+      location.coords.accuracy,
+    );
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet } from "react-native";
-import { getDelayDisplayInfo } from "../src/domain/utils/delayFormatter";
+import { DepartureDelay } from "../src/domain/value-objects/DepartureDelay";
 
 interface DelayHighlightProps {
   delayInSeconds: number | null | undefined;
@@ -9,7 +9,7 @@ interface DelayHighlightProps {
 export default function DelayHighlight({
   delayInSeconds,
 }: DelayHighlightProps) {
-  const delayInfo = getDelayDisplayInfo(delayInSeconds);
+  const delayInfo = new DepartureDelay(delayInSeconds);
 
   const opacity = useRef(new Animated.Value(1)).current;
 
