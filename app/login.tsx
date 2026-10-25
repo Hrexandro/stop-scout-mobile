@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { useStore } from "../src/store/useStore";
-import { loginUser } from "../src/use-cases/LoginUserUseCase";
+import { container } from "../src/di/container";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      const user = await loginUser(username, password);
+      const user = await container.loginUserUseCase.execute(username, password);
 
       login(user);
       console.log("Zalogowany użytkownik:", useStore.getState().user);

@@ -1,5 +1,6 @@
 import type { User } from "../../domain/entities/User";
 import { getDatabase } from "./database";
+import type { IAuthRepository } from "../../domain/repositories/IAuthRepository";
 
 export async function createUser(
   username: string,
@@ -37,4 +38,13 @@ export async function findUserByUsername(
     username: row.username,
     passwordHash: row.password_hash,
   };
+}
+export class SqliteAuthRepository implements IAuthRepository {
+  async createUser(username: string, passwordHash: string): Promise<number> {
+    return createUser(username, passwordHash);
+  }
+
+  async findUserByUsername(username: string) {
+    return findUserByUsername(username);
+  }
 }

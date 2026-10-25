@@ -1,5 +1,6 @@
 import type { Stop } from "../../domain/entities/Stop";
 import { getDatabase } from "./database";
+import type { GeoBoundingBox } from "../../domain/value-objects/GeoBoundingBox";
 
 interface StopRow {
   stop_id: number;
@@ -106,23 +107,11 @@ export async function searchStops(query: string): Promise<Stop[]> {
     lon: row.lon,
   }));
 }
-export interface MapBounds {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}
 
-export async function getStopsInBounds(bounds: MapBounds): Promise<Stop[]> {
+export async function getStopsInBounds(
+  bounds: GeoBoundingBox,
+): Promise<Stop[]> {
   const { south, west, north, east } = bounds;
-
-  if (
-    ![south, west, north, east].every(Number.isFinite) ||
-    south > north ||
-    west > east
-  ) {
-    throw new Error("Nieprawidłowe granice mapy.");
-  }
 
   const db = await getDatabase();
 

@@ -1,36 +1,36 @@
-import {
-    createUser,
-    findUserByUsername,
-} from "../infrastructure/storage/SqliteAuthRepository";
+import type { IAuthRepository } from "../domain/repositories/IAuthRepository";
+import type { IPasswordHasher } from "../domain/repositories/IPasswordHasher";
 
-import { hashPassword } from "../infrastructure/security/passwordHasher";
+export class RegisterUserUseCase {
+  constructor(
+    private readonly authRepository: IAuthRepository,
+    private readonly passwordHasher: IPasswordHasher,
+  ) {}
 
-export async function registerUser(
-  username: string,
-  password: string,
-): Promise<{ id: number; username: string }> {
-  const normalizedUsername = username.trim();
+  async execute(
+    username: string,
+    password: string,
+  ): Promise<{ id: number; username: string }> {
+    const normalizedUsername = username.trim();
 
-  // Sprawdzamy, czy pola nie są puste.
-  if (!normalizedUsername || !password) {
-    throw new Error("Nazwa użytkownika i hasło są wymagane.");
+    if (!normalizedUsername || !password) {
+      throw new Error("Nazwa użytkownika i hasło są wymagane.");
+    }
+
+    const existingUser =
+      await this.authRepository.findUserByUsername(normalizedUsername);
+
+    if (existingUser) {
+      throw new Error("Użytkownik o tej nazwie już istnieje.");
+    }
+
+    const passwordHash = await this.passwordHasher.hash(password);
+
+    const id = await this.authRepository.createUser(
+      normalizedUsername,
+      passwordHash,
+    );
+
+    return { id, username: normalizedUsername };
   }
-
-  // Sprawdzamy, czy użytkownik już istnieje.
-  const existingUser = await findUserByUsername(normalizedUsername);
-
-  if (existingUser) {
-    throw new Error("Użytkownik o tej nazwie już istnieje.");
-  }
-
-  // Hashujemy hasło przed zapisaniem do bazy.
-  const passwordHash = await hashPassword(password);
-
-  // Zapisujemy użytkownika w SQLite.
-  const id = await createUser(normalizedUsername, passwordHash);
-
-  return {
-    id,
-    username: normalizedUsername,
-  };
 }

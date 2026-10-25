@@ -1,16 +1,16 @@
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Button,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput
+  ActivityIndicator,
+  Alert,
+  Button,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
 } from "react-native";
-import { registerUser } from "../src/use-cases/RegisterUserUseCase";
+import { container } from "../src/di/container";
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState("");
@@ -23,7 +23,10 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      const user = await registerUser(username, password);
+      const user = await container.registerUserUseCase.execute(
+        username,
+        password,
+      );
 
       Alert.alert(
         "Sukces",

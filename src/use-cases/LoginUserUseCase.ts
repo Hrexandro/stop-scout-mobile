@@ -1,27 +1,37 @@
-import { findUserByUsername } from "../infrastructure/storage/SqliteAuthRepository";
+import type { IAuthRepository } from "../domain/repositories/IAuthRepository";
+import type { IPasswordHasher } from "../domain/repositories/IPasswordHasher";
 
-import { verifyPassword } from "../infrastructure/security/passwordHasher";
+export class LoginUserUseCase {
+  constructor(
+    private readonly authRepository: IAuthRepository,
+    private readonly passwordHasher: IPasswordHasher,
+  ) {}
 
-export async function loginUser(
-  username: string,
-  password: string,
-): Promise<{ id: number; username: string }> {
-  const normalizedUsername = username.trim();
+  async execute(
+    username: string,
+    password: string,
+  ): Promise<{ id: number; username: string }> {
+    const normalizedUsername = username.trim();
 
-  const user = await findUserByUsername(normalizedUsername);
+    const user =
+      await this.authRepository.findUserByUsername(normalizedUsername);
 
-  if (!user) {
-    throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
+    if (!user) {
+      throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
+    }
+
+    const isPasswordCorrect = await this.passwordHasher.verify(
+      password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordCorrect) {
+      throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+    };
   }
-
-  const isPasswordCorrect = await verifyPassword(password, user.passwordHash);
-
-  if (!isPasswordCorrect) {
-    throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
-  }
-
-  return {
-    id: user.id,
-    username: user.username,
-  };
 }

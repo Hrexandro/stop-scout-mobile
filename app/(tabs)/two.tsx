@@ -14,6 +14,7 @@ import {
   getStopsInBounds,
 } from "../../src/infrastructure/storage/SqliteStopRepository";
 import { useStore } from "../../src/store/useStore";
+import { GeoBoundingBox } from "../../src/domain/value-objects/GeoBoundingBox";
 const locationService = new ExpoLocationService();
 
 export default function MapTabScreen() {
@@ -115,12 +116,14 @@ export default function MapTabScreen() {
       }
 
       // Pobieramy z SQLite tylko widoczne przystanki.
-      const stops = await getStopsInBounds({
-        south: message.south,
-        west: message.west,
-        north: message.north,
-        east: message.east,
-      });
+      const bounds = new GeoBoundingBox(
+        message.south,
+        message.west,
+        message.north,
+        message.east,
+      );
+
+      const stops = await getStopsInBounds(bounds);
 
       // Ignorujemy wynik, jeśli użytkownik zdążył
       // już przesunąć mapę w inne miejsce.
