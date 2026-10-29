@@ -11,10 +11,8 @@ import {
 import DepartureCard from "../../components/DepartureCard";
 import { syncStops } from "../../src/use-cases/SyncStopsUseCase";
 import type { Departure } from "../../src/domain/entities/Departure";
-import { GetLiveDeparturesUseCase } from "../../src/use-cases/GetLiveDeparturesUseCase";
-import { ZtmDeparturesRepository } from "../../src/infrastructure/api/ZtmDeparturesRepository";
 import { useStore } from "../../src/store/useStore";
-
+import { container } from "../../src/di/container";
 function formatDepartureTime(isoTime: string): string {
   const date = new Date(isoTime);
 
@@ -29,9 +27,7 @@ function formatDepartureTime(isoTime: string): string {
   }).format(date);
 }
 
-const departuresUseCase = new GetLiveDeparturesUseCase(
-  new ZtmDeparturesRepository(),
-);
+const departuresUseCase = container.getLiveDeparturesUseCase;
 
 export default function HomeScreen() {
   const [departures, setDepartures] = useState<Departure[]>([]);

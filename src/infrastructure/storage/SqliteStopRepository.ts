@@ -1,7 +1,7 @@
 import type { Stop } from "../../domain/entities/Stop";
 import { getDatabase } from "./database";
 import type { GeoBoundingBox } from "../../domain/value-objects/GeoBoundingBox";
-
+import type { IStopRepository } from "../../domain/repositories/IStopRepository";
 interface StopRow {
   stop_id: number;
   name: string;
@@ -131,4 +131,17 @@ export async function getStopsInBounds(
     lat: row.lat,
     lon: row.lon,
   }));
+}
+
+export class SqliteStopRepository implements IStopRepository {
+  async getById(stopId: number): Promise<Stop | null> {
+    return getStopById(stopId);
+  }
+
+  async getInBounds(bounds: GeoBoundingBox): Promise<Stop[]> {
+    return getStopsInBounds(bounds);
+  }
+  async search(query: string): Promise<Stop[]> {
+    return searchStops(query);
+  }
 }

@@ -31,13 +31,30 @@ export async function fetchStopsFromApi(): Promise<Stop[]> {
     .filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key))
     .sort();
 
-  const latestDate = dates[dates.length - 1];
+  const dateParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
 
-  if (!latestDate || !Array.isArray(data[latestDate]?.stops)) {
-    throw new Error("Nieprawidłowa struktura danych ZTM.");
+  const getPart = (type: string) =>
+    dateParts.find((part) => part.type === type)?.value ?? "";
+
+  const today = `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
+
+  const selectedDate =
+    [...dates].reverse().find((date) => date <= today) ?? dates[0];
+
+  if (!selectedDate) {
+    throw new Error("Brak danych przystanków w API ZTM.");
   }
 
-  const apiStops = data[latestDate].stops;
+  const apiStops = data[selectedDate].stops;
+
+  console.log(
+    `Wybrano dane ZTM z ${selectedDate}: ${apiStops.length} przystanków`,
+  );
 
   // Zamieniamy dane z API na naszą encję Stop.
   return apiStops.flatMap((stop): Stop[] => {

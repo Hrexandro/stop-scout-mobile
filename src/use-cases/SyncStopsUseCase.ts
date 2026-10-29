@@ -30,7 +30,28 @@ export function syncStops(force = false): Promise<SyncResult> {
     }
 
     const stops = await fetchStopsFromApi();
+    console.log("Przystanki pobrane z API:", stops.length);
 
+    console.log(
+      "Unikalne identyfikatory:",
+      new Set(stops.map((stop) => stop.stopId)).size,
+    );
+
+    console.log(
+      "Hucisko w danych API:",
+      stops.some((stop) => stop.stopId === 2138),
+    );
+
+    console.log(
+      "Przystanki w centrum Gdańska:",
+      stops.filter(
+        (stop) =>
+          stop.lat >= 54.3 &&
+          stop.lat <= 54.4 &&
+          stop.lon >= 18.5 &&
+          stop.lon <= 18.8,
+      ).length,
+    );
     if (stops.length === 0) {
       throw new Error("API nie zwróciło żadnych przystanków.");
     }

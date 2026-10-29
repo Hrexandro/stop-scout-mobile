@@ -8,14 +8,10 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { ExpoLocationService } from "../../src/infrastructure/location/ExpoLocationService";
-import {
-  getStopById,
-  getStopsInBounds,
-} from "../../src/infrastructure/storage/SqliteStopRepository";
+import { container } from "../../src/di/container";
+
 import { useStore } from "../../src/store/useStore";
 import { GeoBoundingBox } from "../../src/domain/value-objects/GeoBoundingBox";
-const locationService = new ExpoLocationService();
 
 export default function MapTabScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -25,7 +21,7 @@ export default function MapTabScreen() {
   const handleCenterOnUser = async () => {
     try {
       setLoadingLoc(true);
-      const coords = await locationService.getCurrentPosition();
+      const coords = await container.getCurrentLocationUseCase.execute();
 
       if (!coords) {
         Alert.alert(
@@ -89,7 +85,7 @@ export default function MapTabScreen() {
           return;
         }
 
-        const stop = await getStopById(stopId);
+        const stop = await container.getStopByIdUseCase.execute(stopId);
 
         if (!stop) {
           Alert.alert("Błąd", "Nie znaleziono przystanku w bazie.");
@@ -123,7 +119,7 @@ export default function MapTabScreen() {
         message.east,
       );
 
-      const stops = await getStopsInBounds(bounds);
+      const stops = await container.getStopsInBoundsUseCase.execute(bounds);
 
       // Ignorujemy wynik, jeśli użytkownik zdążył
       // już przesunąć mapę w inne miejsce.
