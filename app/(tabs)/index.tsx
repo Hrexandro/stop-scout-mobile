@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import DepartureCard from "../../components/DepartureCard";
-import { syncStops } from "../../src/use-cases/SyncStopsUseCase";
 import type { Departure } from "../../src/domain/entities/Departure";
 import { useStore } from "../../src/store/useStore";
 import { container } from "../../src/di/container";
@@ -87,7 +86,7 @@ export default function HomeScreen() {
 
   const handleTestApi = async () => {
     try {
-      const result = await syncStops(true);
+      const result = await container.syncStopsUseCase.execute(true);
 
       setStopsStatus("ready");
 
@@ -108,7 +107,8 @@ export default function HomeScreen() {
   useEffect(() => {
     let active = true;
 
-    void syncStops()
+    void container.syncStopsUseCase
+      .execute()
       .then((result) => {
         if (!active) return;
 

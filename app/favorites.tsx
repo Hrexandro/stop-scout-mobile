@@ -11,8 +11,8 @@ import {
 } from "react-native";
 
 import type { Stop } from "../src/domain/entities/Stop";
-import { searchStops } from "../src/infrastructure/storage/SqliteStopRepository";
 import { useStore } from "../src/store/useStore";
+import { container } from "../src/di/container";
 
 type Tab = "favorites" | "search";
 
@@ -62,7 +62,8 @@ export default function FavoritesScreen() {
 
     setSearching(true);
 
-    searchStops(query)
+    container.searchStopsUseCase
+      .execute(query)
       .then((stops) => {
         if (active) setResults(stops);
       })

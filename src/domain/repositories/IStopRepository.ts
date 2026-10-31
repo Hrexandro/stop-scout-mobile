@@ -7,4 +7,7 @@ export interface IStopRepository {
   getInBounds(bounds: GeoBoundingBox): Promise<Stop[]>;
 
   search(query: string): Promise<Stop[]>;
+
+  saveStops(stops: Stop[]): Promise<void>;
+  countStoredStops(): Promise<number>;
 }

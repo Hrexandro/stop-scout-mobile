@@ -86,7 +86,26 @@ describe("GetLiveDeparturesUseCase", () => {
 
     expect(repository.getDepartures).not.toHaveBeenCalled();
   });
+  test("uwzględnia estimatedTime zamiast theoreticalTime", async () => {
+    repository.getDepartures.mockResolvedValue([
+      {
+        ...makeDeparture("opozniony", "2026-10-18T12:08:00Z"),
+        theoreticalTime: "2026-10-18T11:55:00Z",
+      },
+      {
+        ...makeDeparture("przyspieszony", "2026-10-18T11:57:00Z"),
+        theoreticalTime: "2026-10-18T12:10:00Z",
+      },
+      makeDeparture("regularny", "2026-10-18T12:03:00Z"),
+    ]);
 
+    const result = await useCase.execute(2072);
+
+    expect(result.map((departure) => departure.id)).toEqual([
+      "regularny",
+      "opozniony",
+    ]);
+  });
   test("przekazuje błąd zgłoszony przez repozytorium", async () => {
     repository.getDepartures.mockRejectedValue(
       new Error("Brak połączenia z API"),

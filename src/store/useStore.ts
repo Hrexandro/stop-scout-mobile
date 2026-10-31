@@ -1,10 +1,5 @@
 import { create } from "zustand";
-import {
-  addFavorite,
-  getUserFavorites,
-  removeFavorite,
-  updateFavoriteNote,
-} from "../infrastructure/storage/SqliteFavoritesRepository";
+import { container } from "../di/container";
 
 export interface SavedStop {
   stopId: number;
@@ -68,7 +63,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (userId === null) return;
 
-    const favorites = await getUserFavorites(userId);
+    const favorites =
+      await container.favoritesRepository.getUserFavorites(userId);
 
     // Zabezpieczenie przed zmianą konta w trakcie odczytu
     if (get().userId !== userId) return;
@@ -99,7 +95,7 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await addFavorite(userId, stop.stopId);
+      await container.favoritesRepository.addFavorite(userId, stop.stopId);
     } catch (error) {
       // Rollback: usuwamy niedodaną pozycję
       if (get().userId === userId) {
@@ -131,7 +127,7 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await removeFavorite(userId, stopId);
+      await container.favoritesRepository.removeFavorite(userId, stopId);
     } catch (error) {
       // Rollback: przywracamy usunięty przystanek
       if (get().userId === userId) {
@@ -171,7 +167,11 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await updateFavoriteNote(userId, stopId, note);
+      await container.favoritesRepository.updateFavoriteNote(
+        userId,
+        stopId,
+        note,
+      );
     } catch (error) {
       // Rollback
       if (get().userId === userId) {

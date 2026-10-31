@@ -1,9 +1,7 @@
 import { getDatabase } from "./database";
 import type { Stop } from "../../domain/entities/Stop";
-
-export interface FavoriteStop extends Stop {
-  notes: string | null;
-}
+import type { FavoriteStop } from "../../domain/entities/FavoriteStop";
+import type { IFavoritesRepository } from "../../domain/repositories/IFavoritesRepository";
 
 interface FavoriteRow {
   stop_id: number;
@@ -73,33 +71,7 @@ export async function getUserFavorites(
     notes: row.notes,
   }));
 }
-export async function getFirstUnfavoritedStop(
-  userId: number,
-): Promise<Stop | null> {
-  const db = await getDatabase();
 
-  const row = await db.getFirstAsync<Omit<FavoriteRow, "notes">>(
-    `SELECT s.stop_id, s.name, s.sub_name, s.lat, s.lon
-     FROM stops AS s
-     WHERE NOT EXISTS (
-       SELECT 1 FROM favorites AS f
-       WHERE f.user_id = ? AND f.stop_id = s.stop_id
-     )
-     ORDER BY s.stop_id
-     LIMIT 1`,
-    [userId],
-  );
-
-  if (!row) return null;
-
-  return {
-    stopId: row.stop_id,
-    name: row.name,
-    subName: row.sub_name ?? undefined,
-    lat: row.lat,
-    lon: row.lon,
-  };
-}
 export async function updateFavoriteNote(
   userId: number,
   stopId: number,
@@ -116,5 +88,26 @@ export async function updateFavoriteNote(
 
   if (result.changes === 0) {
     throw new Error("Nie znaleziono ulubionego przystanku.");
+  }
+}
+export class SqliteFavoritesRepository implements IFavoritesRepository {
+  async getUserFavorites(userId: number): Promise<FavoriteStop[]> {
+    return getUserFavorites(userId);
+  }
+
+  async addFavorite(userId: number, stopId: number): Promise<void> {
+    return addFavorite(userId, stopId);
+  }
+
+  async removeFavorite(userId: number, stopId: number): Promise<void> {
+    return removeFavorite(userId, stopId);
+  }
+
+  async updateFavoriteNote(
+    userId: number,
+    stopId: number,
+    note: string,
+  ): Promise<void> {
+    return updateFavoriteNote(userId, stopId, note);
   }
 }

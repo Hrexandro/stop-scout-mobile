@@ -1,70 +1,49 @@
-import { fetchStopsFromApi } from "../infrastructure/api/ZtmApiClient";
-import {
-  countStoredStops,
-  saveStops,
-} from "../infrastructure/storage/SqliteStopRepository";
+import type { IStopsDataSource } from "../domain/repositories/IStopsDataSource";
+import type { IStopRepository } from "../domain/repositories/IStopRepository";
 
 interface SyncResult {
   count: number;
   downloaded: boolean;
 }
 
-let syncInProgress: Promise<SyncResult> | null = null;
+export class SyncStopsUseCase {
+  private syncInProgress: Promise<SyncResult> | null = null;
 
-export function syncStops(force = false): Promise<SyncResult> {
-  // Nie uruchamiamy dwóch synchronizacji jednocześnie.
-  if (syncInProgress) {
-    return syncInProgress;
-  }
+  constructor(
+    private readonly stopsDataSource: IStopsDataSource,
+    private readonly stopRepository: IStopRepository,
+  ) {}
 
-  syncInProgress = (async () => {
-    const storedCount = await countStoredStops();
+  execute(force = false): Promise<SyncResult> {
+    // Nie uruchamiamy dwóch synchronizacji jednocześnie.
+    if (this.syncInProgress) {
+      return this.syncInProgress;
+    }
 
-    // Przy automatycznym starcie nie pobieramy danych ponownie,
-    // jeśli w SQLite są już przystanki.
-    if (!force && storedCount > 0) {
+    this.syncInProgress = (async () => {
+      const storedCount = await this.stopRepository.countStoredStops();
+
+      // Przy automatycznym starcie nie pobieramy danych ponownie,
+      // jeśli w SQLite są już przystanki.
+      if (!force && storedCount > 0) {
+        return {
+          count: storedCount,
+          downloaded: false,
+        };
+      }
+
+      const stops = await this.stopsDataSource.fetchStops();
+
+      await this.stopRepository.saveStops(stops);
+
       return {
-        count: storedCount,
-        downloaded: false,
+        count: await this.stopRepository.countStoredStops(),
+        downloaded: true,
       };
-    }
+    })().finally(() => {
+      this.syncInProgress = null;
+    });
 
-    const stops = await fetchStopsFromApi();
-    console.log("Przystanki pobrane z API:", stops.length);
-
-    console.log(
-      "Unikalne identyfikatory:",
-      new Set(stops.map((stop) => stop.stopId)).size,
-    );
-
-    console.log(
-      "Hucisko w danych API:",
-      stops.some((stop) => stop.stopId === 2138),
-    );
-
-    console.log(
-      "Przystanki w centrum Gdańska:",
-      stops.filter(
-        (stop) =>
-          stop.lat >= 54.3 &&
-          stop.lat <= 54.4 &&
-          stop.lon >= 18.5 &&
-          stop.lon <= 18.8,
-      ).length,
-    );
-    if (stops.length === 0) {
-      throw new Error("API nie zwróciło żadnych przystanków.");
-    }
-
-    await saveStops(stops);
-
-    return {
-      count: await countStoredStops(),
-      downloaded: true,
-    };
-  })().finally(() => {
-    syncInProgress = null;
-  });
-
-  return syncInProgress;
+    return this.syncInProgress;
+  }
 }

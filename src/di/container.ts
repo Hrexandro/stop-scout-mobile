@@ -15,6 +15,11 @@ import type { IDeparturesRepository } from "../domain/repositories/IDeparturesRe
 import { ZtmDeparturesRepository } from "../infrastructure/api/ZtmDeparturesRepository";
 import { GetLiveDeparturesUseCase } from "../use-cases/GetLiveDeparturesUseCase";
 import { SearchStopsUseCase } from "../use-cases/SearchStopsUseCase";
+import type { IFavoritesRepository } from "../domain/repositories/IFavoritesRepository";
+import { SqliteFavoritesRepository } from "../infrastructure/storage/SqliteFavoritesRepository";
+import type { IStopsDataSource } from "../domain/repositories/IStopsDataSource";
+import { SyncStopsUseCase } from "../use-cases/SyncStopsUseCase";
+import { ZtmStopsDataSource } from "../infrastructure/api/ZtmStopsDataSource";
 let authRepositoryInstance: IAuthRepository | null = null;
 let stopRepositoryInstance: IStopRepository | null = null;
 let passwordHasherInstance: IPasswordHasher | null = null;
@@ -27,6 +32,9 @@ let getCurrentLocationUseCaseInstance: GetCurrentLocationUseCase | null = null;
 let departuresRepositoryInstance: IDeparturesRepository | null = null;
 let getLiveDeparturesUseCaseInstance: GetLiveDeparturesUseCase | null = null;
 let searchStopsUseCaseInstance: SearchStopsUseCase | null = null;
+let favoritesRepositoryInstance: IFavoritesRepository | null = null;
+let stopsDataSourceInstance: IStopsDataSource | null = null;
+let syncStopsUseCaseInstance: SyncStopsUseCase | null = null;
 export const container = {
   get authRepository(): IAuthRepository {
     if (!authRepositoryInstance) {
@@ -128,5 +136,29 @@ export const container = {
     }
 
     return searchStopsUseCaseInstance;
+  },
+  get favoritesRepository(): IFavoritesRepository {
+    if (!favoritesRepositoryInstance) {
+      favoritesRepositoryInstance = new SqliteFavoritesRepository();
+    }
+
+    return favoritesRepositoryInstance;
+  },
+  get stopsDataSource(): IStopsDataSource {
+    if (!stopsDataSourceInstance) {
+      stopsDataSourceInstance = new ZtmStopsDataSource();
+    }
+
+    return stopsDataSourceInstance;
+  },
+  get syncStopsUseCase(): SyncStopsUseCase {
+    if (!syncStopsUseCaseInstance) {
+      syncStopsUseCaseInstance = new SyncStopsUseCase(
+        this.stopsDataSource,
+        this.stopRepository,
+      );
+    }
+
+    return syncStopsUseCaseInstance;
   },
 };

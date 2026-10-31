@@ -144,4 +144,12 @@ export class SqliteStopRepository implements IStopRepository {
   async search(query: string): Promise<Stop[]> {
     return searchStops(query);
   }
+
+  async saveStops(stops: Stop[]): Promise<void> {
+    await saveStops(stops);
+  }
+
+  async countStoredStops(): Promise<number> {
+    return countStoredStops();
+  }
 }
